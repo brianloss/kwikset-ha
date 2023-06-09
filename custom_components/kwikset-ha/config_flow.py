@@ -5,9 +5,8 @@ from aiokwikset import API
 from aiokwikset.errors import RequestError, NotAuthorized
 import voluptuous as vol
 
-from homeassistant import config_entries, core, exceptions
+from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, CONF_CODE
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
@@ -17,6 +16,8 @@ from .const import (
     CONF_REFRESH_TOKEN,
     CONF_CODE_TYPE,
 )
+
+from .util import async_connect_api, async_validate_api, CannotConnect, KWIKSET_CLIENT
 
 CODE_TYPES = ['email','phone']
 
@@ -35,6 +36,7 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self.password = None
         self.code_type = None
         self.home_id = None
+        self.client = KWIKSET_CLIENT
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
         """Handle re-authentication with kwikset"""
@@ -167,10 +169,7 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             try:
                 #initialize API
-                self.api = API(self.username)
-                #start authentication
-                self.pre_auth = await self.api.authenticate(self.password, self.code_type)
-                LOGGER.debug(self.pre_auth)
+                pre_auth = await async_connect_api(self.username)
             
             except RequestError as request_error:
                 LOGGER.error("Error connecting to the kwikset API: %s", request_error)
@@ -190,7 +189,7 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
         
         #MFA verification
-        await self.api.verify_user(self.pre_auth, user_input[CONF_CODE])
+        await async_validate_api(pre_auth, user_input[CONF_CODE])
 
         return await self.async_step_select_home()
 
@@ -201,7 +200,7 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             existing_homes = [
                 entry.data[CONF_HOME_ID] for entry in self._async_current_entries()
             ]
-            homes = await self.api.user.get_homes()
+            homes = await self.client.user.get_homes()
             homes_options = {
                 home['homeid']: home['homename']
                 for home in homes
@@ -227,15 +226,12 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         data = {
             CONF_EMAIL: self.username,
             CONF_HOME_ID: self.home_id,
-            CONF_REFRESH_TOKEN: self.api.refresh_token,
         }
 
-        homes = await self.api.user.get_homes()
+        homes = await self.client.user.get_homes()
         for home in homes:
             if home['homeid'] == data[CONF_HOME_ID]:
                 home_name = home['homename']
                 return self.async_create_entry(title=home_name, data=data)
 
 
-class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate we cannot connect."""
