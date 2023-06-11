@@ -15,11 +15,12 @@ from .const import (
     DOMAIN,
     CONF_HOME_ID,
     CONF_REFRESH_TOKEN,
-    CLIENT
+    CONF_ID_TOKEN,
+    CLIENT,
+    LOGGER
 )
 from .device import KwiksetDeviceDataUpdateCoordinator
-
-_LOGGER = logging.getLogger(__name__)
+from .util import KWIKSET_CLIENT
 
 PLATFORMS = ["lock", "sensor", "switch"]
 
@@ -29,19 +30,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {}
 
-    _LOGGER.debug(entry.data[CONF_EMAIL])
+    KWIKSET_CLIENT.username = entry.data[CONF_EMAIL]
+    KWIKSET_CLIENT.id_token = entry.data[CONF_ID_TOKEN]
+    KWIKSET_CLIENT.refresh_token = entry.data[CONF_REFRESH_TOKEN]
+    hass.data[DOMAIN][entry.entry_id][CLIENT] = client = KWIKSET_CLIENT
 
-    hass.data[DOMAIN][entry.entry_id][CLIENT] = client = API(entry.data[CONF_EMAIL], refresh_token=entry.data[CONF_REFRESH_TOKEN])
+    LOGGER.debug(entry.data[CONF_EMAIL])
 
     try:
-        await client.renew_access_token()
         user_info = await client.user.get_info()
     except NotAuthorized as err:
-        _LOGGER.error("Your refresh token has been revoked and you must re-authenticate the integration")
+        LOGGER.error("Your refresh token has been revoked and you must re-authenticate the integration")
         raise NotAuthorized from err
     except RequestError as err:
         raise ConfigEntryNotReady from err
-    _LOGGER.debug("Kwikset user information: %s", user_info)
+    LOGGER.debug("Kwikset user information: %s", user_info)
 
     devices = await client.device.get_devices(entry.data[CONF_HOME_ID])
 
@@ -72,7 +75,7 @@ async def async_remove_config_entry_device(
 
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
     """Migrate old entry."""
-    _LOGGER.debug("Migrating from version %s", config_entry.version)
+    LOGGER.debug("Migrating from version %s", config_entry.version)
 
     if config_entry.version == 1:
 
@@ -82,6 +85,6 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
         # saved when async_migrate_entry returns True
         config_entry.version = 2
 
-    _LOGGER.info("Migration to version %s successful", config_entry.version)
+    LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True

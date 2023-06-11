@@ -14,7 +14,8 @@ from .const import (
     LOGGER,
     CONF_HOME_ID,
     CONF_REFRESH_TOKEN,
-    CONF_CODE_TYPE,
+    CONF_ID_TOKEN,
+    CONF_CODE_TYPE
 )
 
 from .util import async_connect_api, async_validate_api, CannotConnect, KWIKSET_CLIENT
@@ -168,8 +169,7 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is None:
             try:
-                #initialize API
-                pre_auth = await async_connect_api(self.username)
+                self.pre_auth = await async_connect_api(self.username, self.password, self.code_type)
             
             except RequestError as request_error:
                 LOGGER.error("Error connecting to the kwikset API: %s", request_error)
@@ -189,7 +189,7 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
         
         #MFA verification
-        await async_validate_api(pre_auth, user_input[CONF_CODE])
+        await async_validate_api(self.pre_auth, user_input[CONF_CODE])
 
         return await self.async_step_select_home()
 
@@ -226,6 +226,8 @@ class KwiksetFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         data = {
             CONF_EMAIL: self.username,
             CONF_HOME_ID: self.home_id,
+            CONF_REFRESH_TOKEN: self.client.refresh_token,
+            CONF_ID_TOKEN: self.client.id_token
         }
 
         homes = await self.client.user.get_homes()

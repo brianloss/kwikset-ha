@@ -12,16 +12,16 @@ from .const import LOGGER
 # the update coordinator.
 KWIKSET_CLIENT = API("")
 
-async def async_connect_api(self, username: str, password: str, code_type: str) -> None:
+async def async_connect_api(username, password, code_type) -> None:
     """Start the connection to the API"""
 
     #initialize API
     KWIKSET_CLIENT.username = username
-    self.client = KWIKSET_CLIENT
+    client = KWIKSET_CLIENT
 
     try:
         #start authentication
-        pre_auth = await self.client.authenticate(password, code_type)
+        pre_auth = await client.authenticate(password, code_type)
         LOGGER.debug(pre_auth)
     except NotAuthorized as err:
         LOGGER.error("Your refresh token has been revoked and you must re-authenticate the integration")
@@ -32,10 +32,11 @@ async def async_connect_api(self, username: str, password: str, code_type: str) 
     
     return pre_auth
     
-async def async_validate_api(self, pre_auth: Any, code: str) -> None:
+async def async_validate_api(pre_auth: Any, code: str) -> None:
     """Validate the code and connect to the API"""
+    client = KWIKSET_CLIENT
     #MFA verification
-    await self.client.verify_user(pre_auth, code)
+    await client.verify_user(pre_auth, code)
     
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
