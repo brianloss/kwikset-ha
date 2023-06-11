@@ -36,8 +36,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id][CLIENT] = client = KWIKSET_CLIENT
 
     LOGGER.debug(entry.data[CONF_EMAIL])
+    #LOGGER.debug(entry.data[CONF_ID_TOKEN])
+    #LOGGER.debug(entry.data[CONF_REFRESH_TOKEN])
 
     try:
+        await client.check_token()
         user_info = await client.user.get_info()
     except NotAuthorized as err:
         LOGGER.error("Your refresh token has been revoked and you must re-authenticate the integration")

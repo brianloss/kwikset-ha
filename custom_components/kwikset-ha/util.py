@@ -22,7 +22,6 @@ async def async_connect_api(username, password, code_type) -> None:
     try:
         #start authentication
         pre_auth = await client.authenticate(password, code_type)
-        LOGGER.debug(pre_auth)
     except NotAuthorized as err:
         LOGGER.error("Your refresh token has been revoked and you must re-authenticate the integration")
         raise NotAuthorized from err
