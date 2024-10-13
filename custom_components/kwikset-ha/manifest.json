@@ -2,9 +2,9 @@
   "domain": "kwikset",
   "name": "Kwikset Smart Locks",
   "config_flow": true,
-  "documentation": "https://github.com/explosivo22/kwikset-ha/",
-  "codeowners": [ "@explosivo22" ],
-  "requirements": [ "aiokwikset==0.2.2a4" ],
-  "version": "0.2.4-alpha2",
+  "documentation": "https://github.com/brianloss/kwikset-ha/",
+  "codeowners": [ "@explosivo22", "@brianloss" ],
+  "requirements": [ "aiokwikset==0.2.2a5" ],
+  "version": "0.2.4-alpha3",
   "iot_class": "cloud_polling"
 }
